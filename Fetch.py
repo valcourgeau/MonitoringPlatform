@@ -7,6 +7,7 @@ import oandapyV20.endpoints.accounts as accounts
 import configparser
 import pandas as pd
 from Utility import *
+from Worker import *
 
 import time
 from datetime import datetime, timedelta
@@ -19,16 +20,16 @@ from FetchOANDA import *
 config = configparser.ConfigParser()
 config.read('oanda.cfg')
 
-accountToken = """84ee0448c71e837a162b3bca843ade9a-5783488d924d69861266a90653c9d898"""
-accountID = "101-004-5508575-001"
-
-oanda = oandapy.API(environment = "practice", access_token = accountToken,
+oanda = oandapy.API(environment = "practice",
+access_token = Utility.getAccountToken(),
 headers={'Accept-Datetime-Format': 'UNIX'})
-eurgbp = FetchInstrumentData("EUR_GBP", oanda, accountID, "S5")
+eurgbp = FetchInstrumentData("EUR_GBP", oanda, Utility.getAccountID(), "S5")
 eurgbp.getHistoryFromToday(20)
-eurusd = FetchInstrumentData("EUR_USD", oanda, accountID, "S5")
+eurusd = FetchInstrumentData("EUR_USD", oanda, Utility.getAccountID(), "S5")
 eurusd.getHistoryFromToday(15)
 print(eurusd.getListofVarList())
+
+
 
 #time.sleep(20)
 #eurusd.updateHistory()
@@ -82,7 +83,26 @@ try:
 
     # connect to the PostgreSQL server
     conn = Utility.connectHeroku(DATABASE_URL_LOCAL)
-    Utility.create_price_table(conn, 'price', False)
+
+    oanda_info = DatabaseInfo('oanda', conn)
+    print(oanda_info)
+    # Creating EUR_USD asset
+
+    eurusd_info = AssetInfo("EUR_USD", oanda_info, ["S5", "M1"])
+    eurgbp_info = AssetInfo("EUR_GBP", oanda_info, ["M5", "W"])
+    print(eurusd_info)
+
+    worker = Worker("Dave")
+    
+    worker.addDatabase(oanda_info)
+    worker.addAssetOnDatabase('oanda', eurusd_info)
+    worker.addAssetOnDatabase('oanda', eurgbp_info)
+    print("ok")
+    print(worker)
+    worker.addGranularitytoAsset('oanda', 'EUR_GBP', ["M2"])
+    print(worker)
+
+    Utility.create_price_table(conn, 'price', True)
     Utility.addQuoteListToDatabase(conn, eurgbp, 'price')
     Utility.addQuoteListToDatabase(conn, eurusd, 'price')
 

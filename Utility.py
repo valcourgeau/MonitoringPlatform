@@ -48,6 +48,42 @@ class Utility:
         (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
     @staticmethod
+    def getAccountID():
+        return "101-004-5508575-001"
+
+    @staticmethod
+    def getAccountToken():
+        return """84ee0448c71e837a162b3bca843ade9a-5783488d924d69861266a90653c9d898"""
+
+    @staticmethod
+    def getAssetUpdateTool(asset_str, database_info, granularity):
+        if not isinstance(granularity, str):
+            raise Exception('Should be given a string, nothing else!')
+        else:
+            assert k in Utility.__granularityToSeconds.keys()
+            if database_info.getName() is 'oanda':
+                temp = FetchInstrumentData(asset_str, database_info.tool,
+                Utility.getAccountID(), granularity)
+
+        return {granularity : temp}
+
+    @staticmethod
+    def getAssetUpdateToolDict(asset_str, database_info, granularity):
+        assert isinstance(granularity, (list, tuple))
+        #if granularity is float:
+        #    raise Exception('Should be given a list, nothing else!')
+
+        granToToolDict = {}
+        if database_info.getName() is 'oanda':
+            for k in granularity:
+                assert k in Utility.__granularityToSeconds.keys()
+                granToToolDict[k] = FetchInstrumentData(asset_str, database_info.tool,
+                Utility.getAccountID(), k)
+
+        return granToToolDict
+
+
+    @staticmethod
     def connectHeroku(full_URL):
 
         url = urlparse(full_URL)
