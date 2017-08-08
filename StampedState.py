@@ -28,16 +28,20 @@ class StampedState:
         descStr += "Mid.l,"
         return(descStr)
 
-    def __init__(self, timestamp, instrumentName):
+    def __init__(self, timestamp, databaseName, instrumentName, granularity):
         # timestamp in UNIX time
+        self.databaseName = databaseName
         self.instrumentName = instrumentName
         self.timestamp = timestamp
+        self.granularity = granularity
         self.UTCdate = datetime.utcfromtimestamp(self.timestamp)
         self.volume = 0
         self.prices = ({}, {}, {}) # Ask, Bid, Mid
 
     def __str__(self):
-        descStr = str(self.instrumentName) + ","
+        descStr = str(self.databaseName) + ","
+        descStr += str(self.instrumentName) + ","
+        descStr += str(self.granularity) + ","
         descStr += str(self.timestamp) + ","
         descStr += str(self.UTCdate) + ","
         descStr += str(self.volume) + ","
@@ -75,10 +79,12 @@ class StampedState:
     def getJSON(self):
         finalJSON = {}
         k = 0;
+        finalJSON["databaseName"] = self.databaseName
         finalJSON["instrumentName"] = self.instrumentName
+        finalJSON["granularity"] = self.granularity
         finalJSON["timestamp"] = int(self.timestamp)
         finalJSON["UTCdate"] = self.UTCdate.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         for i in {StampedState.__ask, StampedState.__bid, StampedState.__mid}:
             for j in StampedState.__priceKeys:
                 finalJSON[i + '.' + j] =  self.prices[int(k)][j]
@@ -90,7 +96,9 @@ class StampedState:
         finalList = []
         k = 0;
         finalList.append(int(self.timestamp))
+        finalList.append(str(self.databaseName))
         finalList.append(str(self.instrumentName))
+        finalList.append(str(self.granularity))
         finalList.append(self.UTCdate.strftime('%Y-%m-%d %H:%M:%S'))
         finalList.append(int(self.volume))
 

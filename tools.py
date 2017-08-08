@@ -1,13 +1,13 @@
 import os
 from urllib.parse import urlparse
-from FetchOANDA import *
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from datetime import datetime, timedelta
 
+class Utility(object):
+    __TIMEDIFF_LONDON_NEW_YORK = 5*60*60 # number of secs between NYC and London
 
-class Utility:
-
-    __granularityToSeconds = {
+    granularityToSeconds = {
         "S5": 5,
         "S10": 10,
         "S15": 15,
@@ -32,20 +32,21 @@ class Utility:
         "M": 23*60*60
     }
 
+
     #def __init__():
 
     @staticmethod
     def getSeconds(granularity):
-        if(not granularity in Utility.__granularityToSeconds.keys()):
+        if(not granularity in Utility.granularityToSeconds.keys()):
             print("Granularity not valid.")
         else:
-            return(Utility.__granularityToSeconds[granularity])
+            return(Utility.granularityToSeconds[granularity])
 
     @staticmethod
     def getAddQuoteQuery(table_str):
-        return "INSERT INTO " + table_str + """(timestamp, instrumentName, UTCdate, volume, ASK_C, ASK_H, ASK_O, ASK_L,
+        return "INSERT INTO " + table_str + """(timestamp, databaseName, instrumentName, granularity, UTCdate, volume, ASK_C, ASK_H, ASK_O, ASK_L,
         BID_C, BID_H, BID_O, BID_L, MID_C, MID_H, MID_O, MID_L) VALUES
-        (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
     @staticmethod
     def getAccountID():
@@ -60,7 +61,7 @@ class Utility:
         if not isinstance(granularity, str):
             raise Exception('Should be given a string, nothing else!')
         else:
-            assert k in Utility.__granularityToSeconds.keys()
+            assert granularity in Utility.granularityToSeconds.keys()
             if database_info.getName() is 'oanda':
                 temp = FetchInstrumentData(asset_str, database_info.tool,
                 Utility.getAccountID(), granularity)
@@ -76,7 +77,7 @@ class Utility:
         granToToolDict = {}
         if database_info.getName() is 'oanda':
             for k in granularity:
-                assert k in Utility.__granularityToSeconds.keys()
+                assert k in Utility.granularityToSeconds.keys()
                 granToToolDict[k] = FetchInstrumentData(asset_str, database_info.tool,
                 Utility.getAccountID(), k)
 
@@ -147,7 +148,9 @@ class Utility:
             cur.execute("""CREATE TABLE """ + table_str +
             """ (ID SERIAL PRIMARY KEY NOT NULL,
             Timestamp INTEGER NOT NULL,
+            databaseName VARCHAR(20) NOT NULL,
             instrumentName VARCHAR(20) NOT NULL,
+            granularity VARCHAR(5) NOT NULL,
             UTCdate VARCHAR(20) NOT NULL,
             volume INTEGER,
             ASK_C REAL NOT NULL,
@@ -174,6 +177,7 @@ class Utility:
             if Utility.table_exists(con, table_str):
                 cur = con.cursor()
                 cur.executemany(Utility.getAddQuoteQuery(table_str), fetchInstr.getListofVarList())
+                fetchInstr.resetPriceDict()
                 cur.close()
             else:
                 raise Exception('addQuoteToDatabase: table ' + table_str + ' does not exist.')
@@ -191,6 +195,10 @@ class Utility:
         except (Exception, psycopg2.DatabaseError) as error:
             con.rollback()
             print(error)
+
+    @staticmethod
+    def getLondonUNIXDate():
+        return datetime.utcnow().timestamp() - Utility.__TIMEDIFF_LONDON_NEW_YORK
 
     @staticmethod
     def close_connection(conn):

@@ -1,3 +1,4 @@
+
 import json
 import oandapyV20 as oandapy
 import oandapyV20.endpoints.pricing as pricing
@@ -9,19 +10,17 @@ import traceback
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
-from StampedState import *
-from Utility import *
-##from StampedState import *
-from datetime import datetime, timedelta
+from stampedstate import *
+from tools import *
 
 
-class FetchInstrumentData:
+class FetchInstrumentData(object):
     __MAX_COUNT = 5000
-    __MAX_NUMBER_STARTING_HISTORY = 10000
-    __TIMEDIFF_LONDON_NEW_YORK = 5*60*60 # number of secs between NYC and London
+    __MAX_NUMBER_STARTING_HISTORY = 100
 
     def __init__(self, instrumentName, api, accountID, granularity):
         self.api = api;
+        self.databaseName = 'oanda'
         self.instrumentName = instrumentName;
         self.accountID = accountID;
         self.granularity = granularity;
@@ -42,10 +41,6 @@ class FetchInstrumentData:
         if(not isinstance(stampedstate, StampedState)):
             raise InputError('Input should be from class StampedState!')
 
-
-
-
-
     def GetCSVFile(self):
         # Note: Implement customisable column names
         if(not self.hasPulledData):
@@ -62,21 +57,18 @@ class FetchInstrumentData:
     def getHistoryFromToday(self, numberPoints):
         # Return numberPoints datapoints for the given instrument from the most
         # recent trade date
-        toDate = self.getLondonUNIXDate()
+        toDate = Utility.getLondonUNIXDate()
         self.getHistoryFromGivenDate(numberPoints, toDate)
 
     def getLastPulledDataTimestamp(self):
         return self.lastPulledDataTimestamp
 
-    def getLondonUNIXDate(self):
-        return datetime.utcnow().timestamp() - FetchInstrumentData.__TIMEDIFF_LONDON_NEW_YORK
-
     def updateHistory(self):
         if(self.hasPulledData):
-            print("Data was pulled %d to %d" % (self.lastPulledDataTimestamp, self.getLondonUNIXDate()))
-            self.getHistoryFromAndTo(self.lastPulledDataTimestamp, self.getLondonUNIXDate())
+            print("Data was pulled %d to %d" % (self.lastPulledDataTimestamp, Utility.getLondonUNIXDate()))
+            self.getHistoryFromAndTo(self.lastPulledDataTimestamp, Utility.getLondonUNIXDate())
         else:
-            self.getHistoryFromGivenDate(FetchInstrumentData.__MAX_NUMBER_STARTING_HISTORY, self.getLondonUNIXDate())
+            self.getHistoryFromGivenDate(FetchInstrumentData.__MAX_NUMBER_STARTING_HISTORY, Utility.getLondonUNIXDate())
 
     def getNumberOfDates(self):
         return len(self.priceDict.keys())
@@ -89,7 +81,7 @@ class FetchInstrumentData:
             return
 
         timestamp = float(quoteInfo['time'])
-        state = StampedState(timestamp, self.instrumentName)
+        state = StampedState(timestamp, self.databaseName, self.instrumentName, self.granularity)
         state.setVolume(quoteInfo['volume'])
         state.setCHOLfromJSON(quoteInfo, "ask")
         state.setCHOLfromJSON(quoteInfo, "bid")
@@ -100,6 +92,10 @@ class FetchInstrumentData:
                 self.priceDict[self.getNumberOfDates()] = state
         else:
             self.priceDict[self.getNumberOfDates()] = state
+
+    def resetPriceDict(self):
+        # empty price dictionary
+        self.priceDict = {}
 
     def getJSONdict(self):
         results = tuple(v.getJSON() for k, v in self.priceDict.items())
@@ -112,6 +108,11 @@ class FetchInstrumentData:
         results = tuple(v.getVarList() for k, v in self.priceDict.items())
         return(results)
 
+    def printData(self):
+        results = self.getListofVarList()
+
+        for x in results:
+            print(x)
 
     def getHistoryFromGivenDate(self, numberPoints, UNIXtimestamp):
         # loads the numberPoints points from the given instrument
@@ -155,8 +156,6 @@ class FetchInstrumentData:
                 index = 0
             else:
                 index -= count
-
-
 
             # Setting the next starting date:
             paramsRequest["to"] =  responseFile[0]["time"] # update "from" date to the last one picked
