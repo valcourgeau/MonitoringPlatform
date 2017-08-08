@@ -48,7 +48,10 @@ class Worker:
         if temp is None:
             raise Exception(asset_str + ' is not in database ' + database_str)
         else:
+            assert isinstance(temp, AssetInfo)
+            print("Adding gran...")
             temp.addGranularity(granularity_list)
+            print("Successful!")
 
     def update(self):
         # initialise data of given assets

@@ -14,7 +14,7 @@ from stampedstate import *
 from tools import *
 
 
-class FetchInstrumentData(object):
+class FetchInstrumentData:
     __MAX_COUNT = 5000
     __MAX_NUMBER_STARTING_HISTORY = 100
 
@@ -57,6 +57,9 @@ class FetchInstrumentData(object):
     def getHistoryFromToday(self, numberPoints):
         # Return numberPoints datapoints for the given instrument from the most
         # recent trade date
+
+        ### Ugly but it works...
+        from tools import Utility
         toDate = Utility.getLondonUNIXDate()
         self.getHistoryFromGivenDate(numberPoints, toDate)
 

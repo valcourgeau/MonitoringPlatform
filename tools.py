@@ -4,7 +4,9 @@ import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from datetime import datetime, timedelta
 
-class Utility(object):
+from fetchinstrumentoanda import *
+
+class Utility:
     __TIMEDIFF_LONDON_NEW_YORK = 5*60*60 # number of secs between NYC and London
 
     granularityToSeconds = {
@@ -33,31 +35,32 @@ class Utility(object):
     }
 
 
-    #def __init__():
+    def __init__():
+        pass
 
-    @staticmethod
-    def getSeconds(granularity):
+    @classmethod
+    def getSeconds(cls, granularity):
         if(not granularity in Utility.granularityToSeconds.keys()):
             print("Granularity not valid.")
         else:
             return(Utility.granularityToSeconds[granularity])
 
-    @staticmethod
-    def getAddQuoteQuery(table_str):
+    @classmethod
+    def getAddQuoteQuery(cls, table_str):
         return "INSERT INTO " + table_str + """(timestamp, databaseName, instrumentName, granularity, UTCdate, volume, ASK_C, ASK_H, ASK_O, ASK_L,
         BID_C, BID_H, BID_O, BID_L, MID_C, MID_H, MID_O, MID_L) VALUES
         (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
-    @staticmethod
-    def getAccountID():
+    @classmethod
+    def getAccountID(cls):
         return "101-004-5508575-001"
 
-    @staticmethod
-    def getAccountToken():
+    @classmethod
+    def getAccountToken(cls):
         return """84ee0448c71e837a162b3bca843ade9a-5783488d924d69861266a90653c9d898"""
 
-    @staticmethod
-    def getAssetUpdateTool(asset_str, database_info, granularity):
+    @classmethod
+    def getAssetUpdateTool(cls, asset_str, database_info, granularity):
         if not isinstance(granularity, str):
             raise Exception('Should be given a string, nothing else!')
         else:
@@ -68,8 +71,8 @@ class Utility(object):
 
         return {granularity : temp}
 
-    @staticmethod
-    def getAssetUpdateToolDict(asset_str, database_info, granularity):
+    @classmethod
+    def getAssetUpdateToolDict(cls, asset_str, database_info, granularity):
         assert isinstance(granularity, (list, tuple))
         #if granularity is float:
         #    raise Exception('Should be given a list, nothing else!')
@@ -84,8 +87,8 @@ class Utility(object):
         return granToToolDict
 
 
-    @staticmethod
-    def connectHeroku(full_URL):
+    @classmethod
+    def connectHeroku(cls, full_URL):
 
         url = urlparse(full_URL)
         dbname = url.path[1:]
@@ -104,8 +107,8 @@ class Utility(object):
 
         return(con)
 
-    @staticmethod
-    def get_table_col_names(con, table_str):
+    @classmethod
+    def get_table_col_names(cls, con, table_str):
 
         col_names = []
         try:
@@ -119,8 +122,8 @@ class Utility(object):
 
         return(col_names)
 
-    @staticmethod
-    def table_exists(con, table_str):
+    @classmethod
+    def table_exists(cls, con, table_str):
 
         exists = False
         try:
@@ -133,8 +136,8 @@ class Utility(object):
             print(e)
         return exists
 
-    @staticmethod
-    def create_price_table(con, table_str, override = False):
+    @classmethod
+    def create_price_table(cls, con, table_str, override = False):
 
         if not override:
             if Utility.table_exists(con, table_str):
@@ -169,8 +172,8 @@ class Utility(object):
             # close communication with the PostgreSQL database server
             cur.close()
 
-    @staticmethod
-    def addQuoteListToDatabase(con, fetchInstr, table_str):
+    @classmethod
+    def addQuoteListToDatabase(cls, con, fetchInstr, table_str):
         if not isinstance(fetchInstr, FetchInstrumentData):
             raise Exception('addQuoteToDatabase: should be given an instance from FetchInstrumentData')
         else:
@@ -183,8 +186,8 @@ class Utility(object):
                 raise Exception('addQuoteToDatabase: table ' + table_str + ' does not exist.')
 
 
-    @staticmethod
-    def drop_table(con, table_str):
+    @classmethod
+    def drop_table(cls, con, table_str):
         try:
             cur = con.cursor()
             instructionStr = "DROP TABLE IF EXISTS %s" % (table_str)
@@ -196,11 +199,12 @@ class Utility(object):
             con.rollback()
             print(error)
 
-    @staticmethod
-    def getLondonUNIXDate():
+
+    @classmethod
+    def getLondonUNIXDate(cls):
         return datetime.utcnow().timestamp() - Utility.__TIMEDIFF_LONDON_NEW_YORK
 
-    @staticmethod
-    def close_connection(conn):
+    @classmethod
+    def close_connection(cls, conn):
         if conn is not None:
             conn.close()

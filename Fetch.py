@@ -7,11 +7,9 @@ import oandapyV20.endpoints.accounts as accounts
 import configparser
 import pandas as pd
 
-
 from tools import *
 from worker import *
 from fetchinstrumentoanda import *
-
 
 import time
 from datetime import datetime, timedelta
@@ -46,6 +44,7 @@ try:
     # Creating EUR_USD asset
     print("Oanda printed")
     eurusd_info = AssetInfo("EUR_USD", oanda_info, ["S5", "M1"])
+    print("asset info 1")
     eurgbp_info = AssetInfo("EUR_GBP", oanda_info, ["M5", "W"])
     print(eurusd_info)
 

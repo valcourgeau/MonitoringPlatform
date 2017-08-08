@@ -1,5 +1,5 @@
 from tools import *
-from fetchinstrumentoanda import *
+#from fetchinstrumentoanda import *
 
 
 class AssetInfo:
@@ -33,7 +33,7 @@ class AssetInfo:
 
     def addGranularity(self, gran_list):
         assert isinstance(gran_list, list)
-        self.tools = {**self.tools, **tools.Utility.getAssetUpdateToolDict(self.name, self.database_info, gran_list)}
+        self.tools = {**self.tools, **Utility.getAssetUpdateToolDict(self.name, self.database_info, gran_list)}
 
     def checkGranularity(self, gran_list):
         keysList = Utility.granularityToSeconds
