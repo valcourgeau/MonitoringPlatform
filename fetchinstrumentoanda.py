@@ -1,17 +1,13 @@
-
-import json
-import oandapyV20 as oandapy
-import oandapyV20.endpoints.pricing as pricing
 import oandapyV20.endpoints.instruments as instruments
-import oandapyV20.endpoints.accounts as accounts
-import configparser
-import traceback
+# import oandapyV20.endpoints.accounts as accounts
+# import configparser
+# import traceback
 
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
-from stampedstate import *
-from tools import *
+from stampedstate import StampedState
+# from tools import Utility
 
 
 class FetchInstrumentData:
@@ -19,11 +15,11 @@ class FetchInstrumentData:
     __MAX_NUMBER_STARTING_HISTORY = 100
 
     def __init__(self, instrumentName, api, accountID, granularity):
-        self.api = api;
+        self.api = api
         self.databaseName = 'oanda'
-        self.instrumentName = instrumentName;
-        self.accountID = accountID;
-        self.granularity = granularity;
+        self.instrumentName = instrumentName
+        self.accountID = accountID
+        self.granularity = granularity
         self.priceDict = {}
         self.dateListSubmittedToDataBase = []
         self.hasPulledData = False
@@ -31,22 +27,23 @@ class FetchInstrumentData:
 
     def __str__(self):
         return("Account ID: " + self.accountID + "\n" +
-        "Instrument Name: " + self.instrumentName + "\n" +
-        "Granularity: " + self.granularity + "\n")
+               "Instrument Name: " + self.instrumentName + "\n" +
+               "Granularity: " + self.granularity + "\n")
 
     def getInstrumentName(self):
         return(self.instrumentName)
 
     def submitStampedStateToDatabase(self, cur, stampedstate):
         if(not isinstance(stampedstate, StampedState)):
-            raise InputError('Input should be from class StampedState!')
+            raise ValueError('Input should be from class StampedState!')
 
     def GetCSVFile(self):
         # Note: Implement customisable column names
         if(not self.hasPulledData):
             print("Data needs to be imported/pulled first.")
             return
-        with  open(str(self.instrumentName) + "_" + str(self.granularity) + "_" + str(len(self.priceDict)) + ".csv", 'w') as csvFile:
+        with open(str(self.instrumentName) + "_" + str(self.granularity) + "_"
+                  + str(len(self.priceDict)) + ".csv", 'w') as csvFile:
             print("Index," + StampedState.rowNames(), file=csvFile)
             length = len(self.priceDict)
             for k in range(length):
@@ -58,7 +55,7 @@ class FetchInstrumentData:
         # Return numberPoints datapoints for the given instrument from the most
         # recent trade date
 
-        ### Ugly but it works...
+        # Ugly but it works...
         from tools import Utility
         toDate = Utility.getLondonUNIXDate()
         self.getHistoryFromGivenDate(numberPoints, toDate)
@@ -68,10 +65,14 @@ class FetchInstrumentData:
 
     def updateHistory(self):
         if(self.hasPulledData):
-            print("Data was pulled %d to %d" % (self.lastPulledDataTimestamp, Utility.getLondonUNIXDate()))
-            self.getHistoryFromAndTo(self.lastPulledDataTimestamp, Utility.getLondonUNIXDate())
+            print("Data was pulled %d to %d" % (self.lastPulledDataTimestamp,
+                                                Utility.getLondonUNIXDate()))
+            self.getHistoryFromAndTo(self.lastPulledDataTimestamp,
+                                     Utility.getLondonUNIXDate())
         else:
-            self.getHistoryFromGivenDate(FetchInstrumentData.__MAX_NUMBER_STARTING_HISTORY, Utility.getLondonUNIXDate())
+            self.getHistoryFromGivenDate(
+                            FetchInstrumentData.__MAX_NUMBER_STARTING_HISTORY,
+                            Utility.getLondonUNIXDate())
 
     def getNumberOfDates(self):
         return len(self.priceDict.keys())
@@ -84,7 +85,8 @@ class FetchInstrumentData:
             return
 
         timestamp = float(quoteInfo['time'])
-        state = StampedState(timestamp, self.databaseName, self.instrumentName, self.granularity)
+        state = StampedState(timestamp, self.databaseName,
+                             self.instrumentName, self.granularity)
         state.setVolume(quoteInfo['volume'])
         state.setCHOLfromJSON(quoteInfo, "ask")
         state.setCHOLfromJSON(quoteInfo, "bid")
@@ -104,7 +106,7 @@ class FetchInstrumentData:
         results = tuple(v.getJSON() for k, v in self.priceDict.items())
         # for k, v in self.priceDict.items():
         #     results.append(v.getJSON())
-        #return({k: v.getJSON() for k, v in self.priceDict.items()})
+        # return({k: v.getJSON() for k, v in self.priceDict.items()})
         return(results)
 
     def getListofVarList(self):
@@ -121,7 +123,8 @@ class FetchInstrumentData:
         # loads the numberPoints points from the given instrument
         # form given UNIX timestamp
 
-        print("Loading history from server from %d for %d points." % (UNIXtimestamp, numberPoints))
+        print("Loading history from server from %d for %d points." %
+              (UNIXtimestamp, numberPoints))
 
         toDate = UNIXtimestamp
         index = numberPoints
@@ -130,7 +133,7 @@ class FetchInstrumentData:
         paramsRequest = {}
         paramsRequest["granularity"] = self.granularity
         paramsRequest["to"] = toDate
-        paramsRequest["price"] = "MBA" # M = mid, B = bid, A = ask
+        paramsRequest["price"] = "MBA"  # M = mid, B = bid, A = ask
         paramsRequest["insertFirst"] = True
 
         self.lastPulledDataTimestamp = paramsRequest["to"]
@@ -150,8 +153,10 @@ class FetchInstrumentData:
 
             # Update parameters and request
             paramsRequest["count"] = count
-            r = instruments.InstrumentsCandles(instrument = self.instrumentName,  params=paramsRequest)
-            rv = self.api.request(r)
+            r = instruments.InstrumentsCandles(instrument=self.instrumentName,
+                                               params=paramsRequest)
+            print(r)
+            self.api.request(r)
 
             responseFile = r.response["candles"]
 
@@ -161,7 +166,8 @@ class FetchInstrumentData:
                 index -= count
 
             # Setting the next starting date:
-            paramsRequest["to"] =  responseFile[0]["time"] # update "from" date to the last one picked
+            paramsRequest["to"] = responseFile[0]["time"]
+            # update "from" date to the last one picked
 
             # Save data into data structure
             for i in range(count):
@@ -172,19 +178,21 @@ class FetchInstrumentData:
         print("History loaded from server.")
 
     def getHistoryFromAndTo(self, UNIXtimestamp_from, UNIXtimestamp_to):
-        previousDictLength = len(self.priceDict.keys())
-        index = (UNIXtimestamp_to - UNIXtimestamp_from) / Utility.getSeconds(self.granularity)
+        # previousDictLength = len(self.priceDict.keys())
+        index = (UNIXtimestamp_to-UNIXtimestamp_from)
+        index = index / Utility.getSeconds(self.granularity)
         index = int(index)
         numberPoints = index
 
         # Create the request parameters:
-        paramsRequest                   = {}
-        paramsRequest["granularity"]    = self.granularity
-        paramsRequest["to"]             = UNIXtimestamp_to
-        paramsRequest["price"]          = "MBA" # M = mid, B = bid, A = ask
-        paramsRequest["insertFirst"]    = True
+        paramsRequest = {}
+        paramsRequest["granularity"] = self.granularity
+        paramsRequest["to"] = UNIXtimestamp_to
+        paramsRequest["price"] = "MBA"  # M = mid, B = bid, A = ask
+        paramsRequest["insertFirst"] = True
 
-        print("History updated from %d to %d" % (UNIXtimestamp_from, UNIXtimestamp_to))
+        print("History updated from %d to %d" % (UNIXtimestamp_from,
+                                                 UNIXtimestamp_to))
 
         # Number of batches:
         maxJ = int(numberPoints/FetchInstrumentData.__MAX_COUNT)
@@ -202,7 +210,8 @@ class FetchInstrumentData:
 
             # Update parameters and request
             paramsRequest["count"] = count
-            r = instruments.InstrumentsCandles(instrument = self.instrumentName,  params = paramsRequest)
+            r = instruments.InstrumentsCandles(instrument=self.instrumentName,
+                                               params=paramsRequest)
             rv = self.api.request(r)
             responseFile = r.response["candles"]
 
@@ -212,12 +221,13 @@ class FetchInstrumentData:
                 index -= count
 
             # Setting the next starting date:
-            paramsRequest["to"] =  responseFile[0]["time"] # update "from" date to the last one picked
+            paramsRequest["to"] = responseFile[0]["time"]
+            # update "from" date to the last one picked
 
             # Save data into data structure
             for i in range(count):
                 quoteInfo = responseFile[i]
                 self.addQuote(quoteInfo, True)
 
-            self.lastPulledDataTimestamp    = UNIXtimestamp_to
+            self.lastPulledDataTimestamp = UNIXtimestamp_to
             print("History updated: %d points" % numberPoints)

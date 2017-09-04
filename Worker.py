@@ -33,20 +33,23 @@ class Worker:
         else:
             self.databaseConnectionsDict[database_info.getName()] = database_info
 
-    def addAssetToDatabase(self, database_str, asset_info):
+    def addAssetToDatabase(self, database_info, asset_info):
         assert isinstance(asset_info, AssetInfo)
-        assert isinstance(database_str, str)
+        assert isinstance(database_info, DatabaseInfo)
 
-        if not database_str in self.assetsPerDatabaseDict.keys():
-            self.assetsPerDatabaseDict[database_str] = {}
+        if not database_info in self.assetsPerDatabaseDict.keys():
+            self.assetsPerDatabaseDict[database_info] = {}
 
-        self.assetsPerDatabaseDict[database_str][asset_info.getName()] = asset_info
-        print(self.assetsPerDatabaseDict[database_str][asset_info.getName()])
+        self.assetsPerDatabaseDict[database_info][asset_info] = asset_info
+        print(self.assetsPerDatabaseDict[database_info][asset_info])
 
-    def addGranularitytoAsset(self, database_str, asset_str, granularity_list):
-        temp = self.assetsPerDatabaseDict[database_str][asset_str]
+    def addGranularitytoAsset(self, database_info, asset_info, granularity_list):
+        assert isinstance(asset_info, AssetInfo)
+        assert isinstance(database_info, DatabaseInfo)
+
+        temp = self.assetsPerDatabaseDict[database_info][asset_info]
         if temp is None:
-            raise Exception(asset_str + ' is not in database ' + database_str)
+            raise Exception(asset_info.getName() + ' is not in database ' + database_info.getName())
         else:
             assert isinstance(temp, AssetInfo)
             print("Adding gran...")
@@ -57,4 +60,4 @@ class Worker:
         # initialise data of given assets
         for database in self.databaseConnectionsDict.keys():
             for asset in self.assetsPerDatabaseDict[database]:
-                print(ok)
+                print("Update at {}".format(datetime.utcnow()))

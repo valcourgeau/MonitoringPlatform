@@ -1,11 +1,8 @@
-import csv
-import json
 import oandapyV20 as oandapy
 import oandapyV20.endpoints.pricing as pricing
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.accounts as accounts
 import configparser
-import pandas as pd
 
 from tools import *
 from worker import *
@@ -22,52 +19,59 @@ import psycopg2
 config = configparser.ConfigParser()
 config.read('oanda.cfg')
 
-oanda = oandapy.API(environment = "practice",
-access_token = Utility.getAccountToken(),
-headers={'Accept-Datetime-Format': 'UNIX'})
+oanda = oandapy.API(environment="practice",
+                    access_token=Utility.getAccountToken(),
+                    headers={'Accept-Datetime-Format': 'UNIX'})
 eurgbp = FetchInstrumentData("EUR_GBP", oanda, Utility.getAccountID(), "S5")
-eurgbp.getHistoryFromToday(20)
+eurgbp.getHistoryFromToday(10000)
 eurusd = FetchInstrumentData("EUR_USD", oanda, Utility.getAccountID(), "S5")
 eurusd.getHistoryFromToday(15)
-#print(eurusd.printData())
+# print(eurusd.printData())
 
 # Creating price table
 try:
     # read the connection parameters
     DATABASE_URL_LOCAL = os.environ['DATABASE_URL_HEROKU']
-
+    #print(DATABASE_URL_LOCAL)
     # connect to the PostgreSQL server
     conn = Utility.connectHeroku(DATABASE_URL_LOCAL)
 
     oanda_info = DatabaseInfo('oanda', conn)
-    print(oanda_info)
+    #print(oanda_info)
     # Creating EUR_USD asset
-    print("Oanda printed")
+    #print("Oanda printed")
     eurusd_info = AssetInfo("EUR_USD", oanda_info, ["S5", "M1"])
-    print("asset info 1")
+    #print("asset info 1")
     eurgbp_info = AssetInfo("EUR_GBP", oanda_info, ["M5", "W"])
+
     print(eurusd_info)
+    print(eurgbp_info)
 
     worker = Worker("Dave")
     print(worker)
 
-    print("ok 1")
     worker.addDatabase(oanda_info)
-    print("ok 2")
-    worker.addAssetToDatabase('oanda', eurusd_info)
-    print("ok 3")
-    worker.addAssetToDatabase('oanda', eurgbp_info)
-    print("ok 4")
-    print(worker)
-    print("ok 5")
-    worker.addGranularitytoAsset('oanda', 'EUR_GBP', ["M2"])
-    print(worker)
+    worker.addAssetToDatabase(oanda_info, eurusd_info)
+    worker.addAssetToDatabase(oanda_info, eurgbp_info)
+    print("all right")
+    worker.addGranularitytoAsset(oanda_info, eurgbp_info, ["M2"])
+    print(eurgbp_info)
 
-    print("OKI")
-    Utility.create_price_table(conn, 'price', True)
-    print("TABLE CREATED")
-    Utility.addQuoteListToDatabase(conn, eurgbp, 'price')
+    #Utility.create_price_table(conn, 'price', True)
+    #print("Table exists? {}".format(Utility.table_exists(conn, 'price')))
+    #Utility.drop_table(conn, 'price')
+    #Utility.create_price_table(conn, 'price', True)
+    #Utility.drop_table(conn, 'price')
+    #print("Table exists? {}".format(Utility.table_exists(conn, 'price')))
+    #Utility.create_price_table(conn, 'price', True)
+    #print("Table exists? {}".format(Utility.table_exists(conn, 'price')))
+    #print("TABLE CREATED")
+    #Utility.addQuoteListToDatabase(conn, eurgbp, 'price')
     #Utility.addQuoteListToDatabase(conn, eurusd, 'price')
+    #create_tables()
+    #worker.update()
+    #time.sleep(5)
+    #worker.update()
 
     # commit the changes to database
     conn.commit()
