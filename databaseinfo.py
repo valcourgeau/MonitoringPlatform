@@ -1,9 +1,9 @@
-from tools import Utility
 import oandapyV20 as oandapy
 
 
 class DatabaseInfo:
     def __init__(self, name, conn):
+        from tools import Utility
         self.name = name
         self.conn = conn
         self.tool = None

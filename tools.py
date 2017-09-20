@@ -5,7 +5,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from datetime import datetime, timedelta
 
 from fetchinstrumentoanda import *
-
+from databaseinfo import DatabaseInfo
 
 class Utility:
     __TIMEDIFF_LONDON_NEW_YORK = 5*60*60  # number of secs between NYC / London
@@ -39,12 +39,29 @@ class Utility:
         pass
 
     @classmethod
-    def getSeconds(cls, granularity):
-        if(granularity not in Utility.granularityToSeconds.keys()):
-            raise ValueError("""Utility.getSeconds: Granularity
-                            token not valid.""")
+    def is_list_in_granularity(cls, gran_list):
+        state = True
+
+        if isinstance(gran_list, str):
+            return gran_list in Utility.granularityToSeconds.keys()
         else:
-            return(Utility.granularityToSeconds[granularity])
+            for gran in gran_list:
+                state = state and (gran in Utility.granularityToSeconds.keys())
+
+        return state
+
+    @classmethod
+    def getSeconds(cls, granularity):
+        if(not Utility.is_list_in_granularity(granularity)):
+            raise ValueError("Utility.getSeconds: Granularity" +
+                             " token not valid.")
+        else:
+            if isinstance(granularity, str):
+                return Utility.granularityToSeconds[granularity]
+            else:
+                return(
+                    [Utility.granularityToSeconds[index]
+                     for index in granularity])
 
     @classmethod
     def getAddQuoteQuery(cls, table_str):
@@ -61,8 +78,8 @@ class Utility:
 
     @classmethod
     def getAccountToken(cls):
-        return """c445061915f8c3c7ccf57580a0512ce2-
-        9743bd23f0405617aa5ca5074396dab8"""
+        return "c445061915f8c3c7ccf57580a0512ce2-" + \
+               "9743bd23f0405617aa5ca5074396dab8"
 
     @classmethod
     def getAssetUpdateTool(cls, asset_str, database_info, granularity):
@@ -77,17 +94,19 @@ class Utility:
 
     @classmethod
     def getAssetUpdateToolDict(cls, asset_info, database_info, granularity):
-        # assert isinstance(database_info, DatabaseInfo)
-        # assert isinstance(asset_info, AssetInfo)
-        assert isinstance(granularity, (list, tuple))
-        # if granularity is float:
-        #    raise Exception('Should be given a list, nothing else!')
+        # from assetinfo import AssetInfo
+        assert isinstance(database_info, DatabaseInfo)
+        # assert isinstance(asset_info, str)
+        if not isinstance(granularity, (list, tuple)):
+            raise ValueError('granularity: Should be given a list,' +
+                             'nothing else!')
 
         granToToolDict = {}
         if database_info.getName() is 'oanda':
             for k in granularity:
                 assert k in Utility.granularityToSeconds.keys()
-                granToToolDict[k] = FetchInstrumentData(asset_info.getName(),
+
+                granToToolDict[k] = FetchInstrumentData(asset_info,
                                                         database_info.tool,
                                                         Utility.getAccountID(),
                                                         k)
@@ -141,22 +160,49 @@ class Utility:
         exists = False
         try:
             cur = con.cursor()
-            cur.execute("""select exists(select relname
-                        from pg_class where relname='""" + table_str + "')")
+            cur.execute("select exists(select relname " +
+                        "from pg_class where relname='" + table_str + "')")
             exists = cur.fetchone()[0]
-            print(exists)
+            # print(exists)
             cur.close()
         except psycopg2.Error as e:
             print(e)
         return exists
 
     @classmethod
+    def get_all_table_names(cls, con):
+        command = """SELECT table_name FROM information_schema.tables
+                     WHERE table_schema = 'public'"""
+
+        cur = con.cursor()
+        cur.execute(command)
+        results = cur.fetchall()
+        cur.close()
+        final_results = [x[0] for x in results]
+        return final_results
+
+    @classmethod
+    def clean_database(cls, conn, auth=False):
+        """ Performs simple drops on list of table names """
+        # Recall that the unit test linked to clean_database dont
+        # have authorization to wipe database
+        if auth:
+            table_names = Utility.get_all_table_names(conn)
+            print("Cleaning database...")
+            for table in table_names:
+                print("Dropping table {}".format(table))
+                Utility.drop_table(conn, table)
+                assert(Utility.table_exists(conn, table))
+        else:
+            print("No authorization to clean database.")
+
+    @classmethod
     def create_price_table(cls, con, table_str, override=False):
 
         if Utility.table_exists(con, table_str):
             if not override:
-                raise Exception("""Table already exists. Please drop it before
-                                creating new one. """ +
+                raise Exception("Table already exists. Please drop it before" +
+                                "creating new one. " +
                                 'Otherwise, activate override.')
             else:
                 print("ALERT: dropping table.")
@@ -164,27 +210,35 @@ class Utility:
                 Utility.create_price_table(con, table_str)
         else:
             cur = con.cursor()
-            # cur.execute("DROP TABLE IF EXISTS " + "PRICE")
-            cur.execute("""CREATE TABLE """ + table_str +
-                        """ (ID SERIAL PRIMARY KEY NOT NULL,
-                        Timestamp INTEGER NOT NULL,
-                        databaseName VARCHAR(20) NOT NULL,
-                        instrumentName VARCHAR(20) NOT NULL,
-                        granularity VARCHAR(5) NOT NULL,
-                        UTCdate VARCHAR(20) NOT NULL,
-                        volume INTEGER,
-                        ASK_C REAL NOT NULL,
-                        ASK_H REAL NOT NULL,
-                        ASK_O REAL NOT NULL,
-                        ASK_L REAL NOT NULL,
-                        BID_C REAL NOT NULL,
-                        BID_H REAL NOT NULL,
-                        BID_O REAL NOT NULL,
-                        BID_L REAL NOT NULL,
-                        MID_C REAL NOT NULL,
-                        MID_H REAL NOT NULL,
-                        MID_O REAL NOT NULL,
-                        MID_L REAL NOT NULL)""")
+            command = "CREATE TABLE " + table_str + """(
+                            ID SERIAL PRIMARY KEY NOT NULL,
+                            Timestamp INTEGER NOT NULL, 
+                            databaseName VARCHAR(20) NOT NULL, 
+                            instrumentName VARCHAR(20) NOT NULL, 
+                            granularity VARCHAR(5) NOT NULL,  
+                            UTCdate VARCHAR(20) NOT NULL,
+                            volume INTEGER, 
+                            ASK_C REAL NOT NULL, 
+                            ASK_H REAL NOT NULL, 
+                            ASK_O REAL NOT NULL,
+                            ASK_L REAL NOT NULL,
+                            BID_C REAL NOT NULL,
+                            BID_H REAL NOT NULL,
+                            BID_O REAL NOT NULL,
+                            BID_L REAL NOT NULL,
+                            MID_C REAL NOT NULL,
+                            MID_H REAL NOT NULL,
+                            MID_O REAL NOT NULL,
+                            MID_L REAL NOT NULL
+                        )"""
+
+            commando = """
+                CREATE TABLE ok (
+                    ok_id SERIAL PRIMARY KEY,
+                    ok_name VARCHAR(255) NOT NULL
+                )
+                """
+            cur.execute(command)
 
             # close communication with the PostgreSQL database server
             cur.close()
@@ -193,8 +247,8 @@ class Utility:
     def addQuoteListToDatabase(cls, con, fetchInstr, table_str):
         if not isinstance(fetchInstr, FetchInstrumentData):
             raise Exception('addQuoteToDatabase:' +
-                            """should be given an instance
-                            from FetchInstrumentData""")
+                            "should be given an instance " +
+                            "from FetchInstrumentData")
         else:
             if Utility.table_exists(con, table_str):
                 cur = con.cursor()
@@ -219,9 +273,33 @@ class Utility:
             con.rollback()
             print(error)
 
+
     @classmethod
     def getLondonUNIXDate(cls):
         return datetime.utcnow().timestamp()-Utility.__TIMEDIFF_LONDON_NEW_YORK
+
+    @classmethod
+    def get_database_url(cls):
+        return os.environ["DATABASE_URL_HEROKU"]
+
+    @classmethod
+    def get_all_instruments_names_oanda(cls):
+        oanda = oandapy.API(environment="practice",
+                        access_token=Utility.getAccountToken(),
+                        headers={'Accept-Datetime-Format': 'UNIX'})
+        r = accounts.AccountInstruments(accountID=Utility.getAccountID())
+        name_list = []
+        for instru in oanda.request(r)["instruments"]:
+            name = instru["name"]
+            index_underscore = name.find("_")
+            name_front = name[:index_underscore]
+            name_back = name[(index_underscore+1):]
+            name_list.append(name_front)
+            name_list.append(name_back)
+
+        name_list = set(name_list)
+        return name_list
+
 
     @classmethod
     def close_connection(cls, conn):

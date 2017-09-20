@@ -52,13 +52,13 @@ class FetchInstrumentData:
         return csvFile
 
     def getHistoryFromToday(self, numberPoints):
-        # Return numberPoints datapoints for the given instrument from the most
-        # recent trade date
+        """Return numberPoints datapoints for the given instrument from the most
+        recent trade date"""
 
         # Ugly but it works...
         from tools import Utility
-        toDate = Utility.getLondonUNIXDate()
-        self.getHistoryFromGivenDate(numberPoints, toDate)
+        to_date = Utility.getLondonUNIXDate() - 1
+        self.getHistoryFromGivenDate(numberPoints, to_date)
 
     def getLastPulledDataTimestamp(self):
         return self.lastPulledDataTimestamp
@@ -113,11 +113,9 @@ class FetchInstrumentData:
         results = tuple(v.getVarList() for k, v in self.priceDict.items())
         return(results)
 
-    def printData(self):
+    def print_data(self):
         results = self.getListofVarList()
-
-        for x in results:
-            print(x)
+        print((x for x in results))
 
     def getHistoryFromGivenDate(self, numberPoints, UNIXtimestamp):
         # loads the numberPoints points from the given instrument
@@ -126,13 +124,14 @@ class FetchInstrumentData:
         print("Loading history from server from %d for %d points." %
               (UNIXtimestamp, numberPoints))
 
-        toDate = UNIXtimestamp
+        to_date = UNIXtimestamp
         index = numberPoints
 
         # Create the request parameters:
         paramsRequest = {}
         paramsRequest["granularity"] = self.granularity
-        paramsRequest["to"] = toDate
+        print("GRANULARITY: {}".format(self.granularity))
+        paramsRequest["to"] = to_date
         paramsRequest["price"] = "MBA"  # M = mid, B = bid, A = ask
         paramsRequest["insertFirst"] = True
 
@@ -155,7 +154,7 @@ class FetchInstrumentData:
             paramsRequest["count"] = count
             r = instruments.InstrumentsCandles(instrument=self.instrumentName,
                                                params=paramsRequest)
-            print(r)
+            #print(r)
             self.api.request(r)
 
             responseFile = r.response["candles"]
@@ -170,7 +169,8 @@ class FetchInstrumentData:
             # update "from" date to the last one picked
 
             # Save data into data structure
-            for i in range(count):
+            for i in range(count-1):
+                print("i = {}".format(i))
                 quoteInfo = responseFile[i]
                 self.addQuote(quoteInfo, False)
 
@@ -212,8 +212,11 @@ class FetchInstrumentData:
             paramsRequest["count"] = count
             r = instruments.InstrumentsCandles(instrument=self.instrumentName,
                                                params=paramsRequest)
-            rv = self.api.request(r)
-            responseFile = r.response["candles"]
+            try:
+                rv = self.api.request(r)
+                responseFile = r.response["candles"]
+            except (Exception) as error:
+                print(error)
 
             if(index - count < 0):
                 index = 0

@@ -1,4 +1,5 @@
 from tools import Utility
+from databaseinfo import DatabaseInfo
 # from fetchinstrumentoanda import *
 
 
@@ -7,6 +8,7 @@ class AssetInfo:
     def __init__(self, name, database_info, granularity_list):
         assert len(granularity_list) > 0
         assert self.checkGranularity(granularity_list)
+        assert isinstance(database_info, DatabaseInfo)
         self.name = name
         self.lastUpdateTime = 0
         self.database_info = database_info
