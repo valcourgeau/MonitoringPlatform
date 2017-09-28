@@ -1,13 +1,15 @@
 import unittest
+import oandapyV20 as oandapy
 from string import ascii_lowercase
 import os
 import sys
 import psycopg2
+from datetime import datetime, time, date
 sys.path.insert(0, 'C:/Users/Valentin/Documents/GitHub/MonitoringPlatform')
 from tools import Utility
+from fetchinstrumentoanda import FetchInstrumentData
 
-
-class TestTools(unittest.TestCase):
+class TestToolsDB(unittest.TestCase):
     TEST_TABLE_NAME_STR = "test_name"
     TEST_DATABASE_URL = "postgres://mgixsptzrehvex:d13e83240446a75f2" + \
                         "025cabd908c81fb31cc4d1b1448317a6a5be" + \

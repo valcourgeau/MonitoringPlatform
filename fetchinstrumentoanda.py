@@ -1,4 +1,5 @@
 import oandapyV20.endpoints.instruments as instruments
+import numpy as np
 # import oandapyV20.endpoints.accounts as accounts
 # import configparser
 # import traceback
@@ -56,7 +57,7 @@ class FetchInstrumentData:
         recent trade date"""
 
         # Ugly but it works...
-        from tools import Utility
+        #from tools import Utility
         to_date = Utility.getLondonUNIXDate() - 1
         self.getHistoryFromGivenDate(numberPoints, to_date)
 
@@ -115,7 +116,8 @@ class FetchInstrumentData:
 
     def print_data(self):
         results = self.getListofVarList()
-        print((x for x in results))
+        for x in results:
+            print(x)
 
     def getHistoryFromGivenDate(self, numberPoints, UNIXtimestamp):
         # loads the numberPoints points from the given instrument
@@ -169,13 +171,22 @@ class FetchInstrumentData:
             # update "from" date to the last one picked
 
             # Save data into data structure
-            for i in range(count-1):
+            for i in range(count):
                 print("i = {}".format(i))
                 quoteInfo = responseFile[i]
                 self.addQuote(quoteInfo, False)
 
         self.hasPulledData = True
         print("History loaded from server.")
+
+    def get_history_from_and_to(self, unix_timestamp_from, unix_timestamp_to):
+        """ Fetch datapoints from and to given dates."""
+        assert(UNIX_timestamp_from <= UNIX_timestamp_to)
+        number_points = np.ceil((UNIX_timestamp_to - UNIX_timestamp_from) / 
+                        self.granularity)
+        number_points = int(number_points)
+        self.getHistoryFromGivenDate(number_points, UNIX_timestamp_to)
+        
 
     def getHistoryFromAndTo(self, UNIXtimestamp_from, UNIXtimestamp_to):
         # previousDictLength = len(self.priceDict.keys())
@@ -228,7 +239,7 @@ class FetchInstrumentData:
             # update "from" date to the last one picked
 
             # Save data into data structure
-            for i in range(count):
+            for i in range(count-1):
                 quoteInfo = responseFile[i]
                 self.addQuote(quoteInfo, True)
 
